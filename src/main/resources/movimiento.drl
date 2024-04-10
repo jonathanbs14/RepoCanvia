@@ -1,0 +1,8 @@
+//import pe.gob.sunat.recaudacionms2.tributaria.gestionsaldo.capturador.domain.BoletaBean;
+
+rule "test 1"
+    when
+//        boleta : BoletaBean( formulario == "1662");
+    then
+//        boleta.setMonto(10.00);
+end;

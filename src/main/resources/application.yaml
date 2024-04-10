@@ -1,0 +1,150 @@
+server:
+  port: 7323
+  servlet:
+    context-path: /v1/tanzu
+
+management:
+  server:
+    port: 17323
+  endpoints:
+    web:
+      base-path: /
+      path-mapping:
+        health: "healthcheck"
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 30MB
+  jpa:
+    open-in-view: false
+  drools:
+    fileRules: movimiento.drl
+    dateFormat: yyyy/MM/dd
+
+rutaApiSunat: "http://api.sunat.peru/v1/"
+reintentoApiSunat: 5
+timeIntervalApiSunat: 2
+
+#Conexiones a Base de Datos Relaciones
+dataSources:
+  conexiones:
+    - uniqueResourceName: dcpdtinternet
+      jndiName: jdbc/dcpdtinternet
+      url: jdbc:informix-sqli:${SQL_PDTINTERNET_DC}
+      user: ${BD_PDTINTERNET_DC_USERNAME}
+      password: ${BD_PDTINTERNET_DC_PASSWORD}
+      driverClassName: com.informix.jdbc.IfxDriver
+      minPoolSize: 10
+      maxPoolSize: 20
+      maxIdleTime: 60
+      borrowConnectionTimeout: 30
+      maintenanceInterval: 360
+      timeoutHealthCheckInMilliseconds: 2000
+      healthCheck: false
+      packagesToScanEntity:
+        - pe.gob.sunat.recaudacionms2.tributaria.gestionsaldo.basepdtinternet.domain
+    - uniqueResourceName: dcrecauda
+      jndiName: jdbc/dcrecauda
+      url: jdbc:informix-sqli:${SQL_RECAUDA_BANCOS_DC}
+      user: ${BD_RECAUDA_DC_USERNAME}
+      password: ${BD_RECAUDA_DC_PASSWORD}
+      driverClassName: com.informix.jdbc.IfxDriver
+      minPoolSize: 5
+      maxPoolSize: 30
+      maxIdleTime: 60
+      borrowConnectionTimeout: 30
+      maintenanceInterval: 360
+      timeoutHealthCheckInMilliseconds: 2000
+      healthCheck: false
+      packagesToScanEntity:
+        - pe.gob.sunat.recaudacionms2.tributaria.gestionsaldo.baserecauda.domain
+#Conexiones a BD Mongo
+mongodb:
+  conexiones:
+    - dsname: "dgbdgestionsaldos"
+      credenciales:
+        usuario: usgsaldoope
+        clave: ${BD_BDGSALDOS_DG_PASSWORD}
+      nodos:
+        - host: ${BDGSALDOS_IP_HOST1}
+          port: ${BDGSALDOS_PORT_HOST1}
+        - host: ${BDGSALDOS_IP_HOST2}
+          port: ${BDGSALDOS_PORT_HOST2}
+        - host: ${BDGSALDOS_IP_HOST3}
+          port: ${BDGSALDOS_PORT_HOST3}
+      database: "bdGestionSaldos"
+      replicaset: ${BDGSALDOS_RS}
+      readpreference: "primary"
+      writeconcern: "w1"
+      poolconfig:
+        maxPoolSize: 200
+        minPoolSize: 0
+
+#Conexion a REDIS
+#redis:
+#  clusters:
+#    - sentinel:
+#        master: ${REDIS_RENTA_MASTER_SITE_1}
+#        nodes:
+#          - ${IP_REDIS_RENTA_SITE1_NODE1}:8001
+#          - ${IP_REDIS_RENTA_SITE1_NODE1}:8001
+#          - ${IP_REDIS_RENTA_SITE1_NODE1}:8001
+#      password: ${REDIS_RENTA_PASSWORD}
+#      readTimeoutInMilliseconds: 3000
+#      timeToLiveInMilliseconds: 60000
+#      cacheNameBase: "gestionsaldos"
+#  # Los siguientes parametros son si en caso se usa: @Cacheable(cacheNames = "contribuyenteCache") de lo contrario se deberia de borrar
+#  cache:
+#    defaults:
+#      -  cacheName: "contribuyenteCache"
+#         timeToLiveInMilliseconds: 120000
+#      -  cacheName: "presentacionCache"
+#         timeToLiveInMilliseconds: 240000
+
+#Conexion a Kafka
+#See https://confluence.insi.sunat.peru/display/Framework3/Framework+kafka
+kafka:
+  producers:
+    - bootstrap_server: 192.168.56.248:9092,192.168.56.249:9092,192.168.56.250:9092  #localhost:9092
+      transactionalId: "tx-1" #Id que sirve para iniciar una transaccion al producir mensajes, por default el valor es vacio o null sin Transaccion
+      topics:
+        - topic-gestionsaldos-seguimiento
+        - topic-gestionsaldo-saldo-acumulado-dj-local
+  consumer:
+    clientId: ms-gestion-movimiento-dj
+    topic:  topic-nc-096
+    bootstrap_server: 192.168.56.248:9092,192.168.56.249:9092,192.168.56.250:9092  #localhost:9092
+    consumerGroup: group-k8sgs-movimiento-dj
+    isolationLevel: "read_committed" #Solo consume mensajes con marca de comiteado, si no se envia toma el valor default "read_uncommitted"
+    retry: 5
+    timeInterval: 3000
+    maxRetryTime: 1000
+    defaultListener: #Esta configuracion es para poder usar el mismo proy de MS de consumer Kafka en despliegue
+      listenerClass: "pe.gob.sunat.recaudacionms2.tributaria.gestionsaldo.movimiento.event.kafka.MovimientoDJConsumer"
+      reference:
+        propertyName: "movimientoDJService"
+        serviceClass: "pe.gob.sunat.recaudacionms2.tributaria.gestionsaldo.movimiento.service.impl.MovimientoDJ621IGVServiceImpl"
+
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: TRACE
+    org.springframework.data.repository.config.RepositoryConfigurationDelegate: WARN
+    org.apache.kafka.clients: INFO
+    org.apache.kafka.clients.consumer: WARN
+    org.apache.kafka.clients.producer: WARN
+    org.springframework.transaction: TRACE
+    org.springframework.transaction.interceptor.TransactionInterceptor: WARN
+    org.springframework.kafka.transaction: DEBUG
+    org.springframework.kafka.support.LoggingProducerListener: WARN
+    com.mchange.v2.c3p0.SQLWarnings: ERROR
+    org.mongodb.driver.protocol.command: WARN
+    org.mongodb.driver: WARN
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: DEBUG
+    org.hibernate.type.descriptor.sql: DEBUG
+    org.hibernate.type.descriptor.sql.spi: WARN
+    pe.gob.sunat.tecnologiams2.arquitectura.framework.microservices: DEBUG
+    io.lettuce.core.RedisClient: DEBUG
